@@ -2,8 +2,10 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Matrix Transformation Simulator (with Camera Controls)</title>
+    
+    <title>3D Matrix Transformation Simulator (Mobile-Friendly)</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     
@@ -17,19 +19,20 @@
             background-color: #f0f2f5;
             color: #333;
             margin: 0;
-            display: flex; /* Use flexbox for layout */
-            height: 100vh;
+            /* (CHANGED) We start with a normal block layout */
         }
 
-        /* --- Controls Panel (Left Side) --- */
+        /* --- Controls Panel (Left Side on Desktop) --- */
         #controls {
-            width: 350px;
+            /* (CHANGED) Set width to 100% by default */
+            width: 100%;
             padding: 20px;
             background-color: #fff;
-            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
-            overflow-y: auto; /* Make controls scrollable */
-            height: 100vh;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow-y: auto;
             box-sizing: border-box; /* Include padding in height */
+            /* (CHANGED) Limit max height for controls on mobile */
+            max-height: 50vh; 
         }
 
         /* (All other CSS is the same as before...) */
@@ -39,12 +42,48 @@
         .control-group label { display: flex; justify-content: space-between; font-size: 0.9em; font-weight: bold; }
         .control-group label span { font-weight: normal; color: #e74c3c; font-family: 'Courier New', Courier, monospace; }
         input[type="range"] { width: 100%; }
-        #scene-container { flex-grow: 1; height: 100vh; background-color: #222; }
-        canvas { display: block; }
+
+        /* --- 3D Scene (Right Side on Desktop) --- */
+        #scene-container {
+            width: 100%;
+            /* (CHANGED) Set a fixed height for the mobile view */
+            height: 50vh; 
+            background-color: #222;
+        }
+        
+        canvas {
+            display: block;
+        }
+
+        /* (Matrix Display and Button styles are unchanged) */
         #matrix-display { background-color: #ecf0f1; padding: 15px; border-radius: 5px; font-family: 'Courier New', Courier, monospace; font-size: 1.1em; line-height: 1.4; display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; text-align: right; }
         #matrix-display span { padding: 5px; background: #fff; border: 1px solid #bdc3c7; border-radius: 3px; }
         button#reset-btn { width: 100%; padding: 10px; background-color: #e74c3c; color: white; border: none; border-radius: 5px; font-size: 1em; font-weight: bold; cursor: pointer; margin-top: 10px; }
         button#reset-btn:hover { background-color: #c0392b; }
+        
+        
+        /* * (NEW) --- RESPONSIVE MEDIA QUERY ---
+         * This is the magic part. If the screen is 769px wide OR WIDER,
+         * it will apply the desktop styles.
+        */
+        @media (min-width: 769px) {
+            body {
+                display: flex; /* Use flexbox for layout */
+                height: 100vh;
+            }
+            
+            #controls {
+                width: 350px; /* Fixed width for controls */
+                height: 100vh; /* Full height */
+                max-height: 100vh; /* Override mobile max-height */
+            }
+            
+            #scene-container {
+                flex-grow: 1; /* Take up remaining space */
+                height: 100vh; /* Full height */
+            }
+        }
+        
     </style>
 </head>
 <body>
@@ -77,16 +116,14 @@
     <script>
         // --- 1. GLOBAL VARIABLES ---
         let scene, camera, renderer, cube, originalCube, gridHelper, axesHelper;
-        let controls; // (NEW) Variable for camera controls
+        let controls; 
         
-        // References to UI elements
         const sliders = {};
         const sliderOutputs = {};
         const matrixSpans = [];
         
         // --- 2. INITIALIZATION ---
         function init() {
-            // Get the container
             const container = document.getElementById('scene-container');
 
             // --- Scene and Camera ---
@@ -94,11 +131,12 @@
             scene.background = new THREE.Color(0x222222);
             
             const fov = 75;
+            // (CHANGED) We calculate aspect from the container, which is now flexible
             const aspect = container.clientWidth / container.clientHeight;
             const near = 0.1;
             const far = 1000;
             camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
-            camera.position.set(3, 4, 7); // Initial camera position
+            camera.position.set(3, 4, 7); 
             camera.lookAt(0, 0, 0);
 
             // --- Renderer ---
@@ -106,35 +144,28 @@
             renderer.setSize(container.clientWidth, container.clientHeight);
             container.appendChild(renderer.domElement);
             
-            // --- (NEW) ORBIT CONTROLS ---
-            // This connects your mouse/touch to the camera
+            // --- ORBIT CONTROLS ---
             controls = new THREE.OrbitControls(camera, renderer.domElement);
-            controls.enableDamping = true; // Adds a nice "smoothing" effect
+            controls.enableDamping = true; 
             controls.dampingFactor = 0.05;
-            controls.target.set(0, 0, 0); // Make it orbit around the origin
+            controls.target.set(0, 0, 0); 
             controls.update();
-            // --- End of new controls ---
 
-            // --- Lighting ---
+            // (Lighting, Helpers, and Cubes are unchanged)
             const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
             scene.add(ambientLight);
             const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
             directionalLight.position.set(1, 2, 1);
             scene.add(directionalLight);
-
-            // --- Helpers ---
             gridHelper = new THREE.GridHelper(10, 10, 0x888888, 0x444444);
             scene.add(gridHelper);
-            axesHelper = new THREE.AxesHelper(3); // X=red, Y=green, Z=blue
+            axesHelper = new THREE.AxesHelper(3);
             scene.add(axesHelper);
-
-            // --- Create the Cubes ---
-            const geometry = new THREE.BoxGeometry(2, 2, 2); // 2x2x2 cube
+            const geometry = new THREE.BoxGeometry(2, 2, 2); 
             const material = new THREE.MeshStandardMaterial({ color: 0xe74c3c });
             cube = new THREE.Mesh(geometry, material);
             cube.matrixAutoUpdate = false; 
             scene.add(cube);
-            
             const wireframeMaterial = new THREE.MeshBasicMaterial({ 
                 color: 0xffffff, 
                 wireframe: true,
@@ -155,7 +186,6 @@
                 sliders[id].addEventListener('input', updateCube);
             });
             
-            // Get matrix display spans
             const matrixContainer = document.getElementById('matrix-display');
             for (let i = 0; i < 16; i++) {
                 const span = document.createElement('span');
@@ -164,16 +194,17 @@
             }
             
             document.getElementById('reset-btn').addEventListener('click', resetValues);
-            window.addEventListener('resize', onWindowResize);
             
-            // First update
+            // (CHANGED) We now call onWindowResize right away
+            window.addEventListener('resize', onWindowResize);
+            onWindowResize(); // Call once to set initial size
+            
             updateCube();
         }
 
         // --- 3. THE UPDATE CUBE FUNCTION ---
         // (This function is unchanged)
         function updateCube() {
-            // 1. Create all the individual transformation matrices
             const tx = parseFloat(sliders.tx.value);
             const ty = parseFloat(sliders.ty.value);
             const tz = parseFloat(sliders.tz.value);
@@ -195,14 +226,12 @@
             const matShear = new THREE.Matrix4().identity();
             matShear.set( 1, sh_yx, 0, 0, sh_xy, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 );
 
-            // 2. Combine the matrices
-            cube.matrix.identity(); // Reset
+            cube.matrix.identity(); 
             cube.matrix.multiply(matTranslate);
             cube.matrix.multiply(matRotate);
             cube.matrix.multiply(matShear);
             cube.matrix.multiply(matScale);
 
-            // 3. Update the UI
             updateUI();
         }
         
@@ -234,20 +263,37 @@
         // --- 4. RENDER LOOP ---
         function animate() {
             requestAnimationFrame(animate);
-            
-            // (NEW) This is required for the smoothing/damping to work
             controls.update(); 
-            
             renderer.render(scene, camera);
         }
 
         // --- 5. EVENT HANDLERS ---
-        // (This function is unchanged)
+        // (CHANGED) This function is now more important
         function onWindowResize() {
             const container = document.getElementById('scene-container');
-            camera.aspect = container.clientWidth / container.clientHeight;
+            
+            // Get the new width and height
+            // We have to check if we are in desktop or mobile layout
+            let newWidth, newHeight;
+            
+            if (window.innerWidth < 769) {
+                // Mobile layout
+                newWidth = window.innerWidth;
+                newHeight = window.innerHeight * 0.5; // 50vh
+            } else {
+                // Desktop layout
+                newWidth = window.innerWidth - 350; // Subtract control panel width
+                newHeight = window.innerHeight; // Full height
+            }
+            
+            // (CHANGED) Manually set the container size to be sure
+            container.style.width = `${newWidth}px`;
+            container.style.height = `${newHeight}px`;
+
+            // Update camera and renderer
+            camera.aspect = newWidth / newHeight;
             camera.updateProjectionMatrix();
-            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setSize(newWidth, newHeight);
         }
 
         // --- 6. START THE SIMULATION ---
