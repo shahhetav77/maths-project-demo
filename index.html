@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Matrix Transformation Simulator (with Camera Controls)</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <style>
+        /* --- Page Layout --- */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.5;
+            background-color: #f0f2f5;
+            color: #333;
+            margin: 0;
+            display: flex; /* Use flexbox for layout */
+            height: 100vh;
+        }
+
+        /* --- Controls Panel (Left Side) --- */
+        #controls {
+            width: 350px;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            overflow-y: auto; /* Make controls scrollable */
+            height: 100vh;
+            box-sizing: border-box; /* Include padding in height */
+        }
+
+        /* (All other CSS is the same as before...) */
+        h1 { font-size: 1.5em; text-align: center; color: #2c3e50; border-bottom: 2px solid #e74c3c; padding-bottom: 10px; margin-top: 0; }
+        h2 { font-size: 1.1em; color: #34495e; margin-top: 20px; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        .control-group { margin-bottom: 15px; }
+        .control-group label { display: flex; justify-content: space-between; font-size: 0.9em; font-weight: bold; }
+        .control-group label span { font-weight: normal; color: #e74c3c; font-family: 'Courier New', Courier, monospace; }
+        input[type="range"] { width: 100%; }
+        #scene-container { flex-grow: 1; height: 100vh; background-color: #222; }
+        canvas { display: block; }
+        #matrix-display { background-color: #ecf0f1; padding: 15px; border-radius: 5px; font-family: 'Courier New', Courier, monospace; font-size: 1.1em; line-height: 1.4; display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; text-align: right; }
+        #matrix-display span { padding: 5px; background: #fff; border: 1px solid #bdc3c7; border-radius: 3px; }
+        button#reset-btn { width: 100%; padding: 10px; background-color: #e74c3c; color: white; border: none; border-radius: 5px; font-size: 1em; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        button#reset-btn:hover { background-color: #c0392b; }
+    </style>
+</head>
+<body>
+
+    <div id="controls">
+        <h1>3D Transformations</h1>
+        <h2>1. Translation (Tx, Ty, Tz)</h2>
+        <div class="control-group"><label for="tx">Translate X <span>0.0</span></label><input type="range" id="tx" min="-5" max="5" value="0" step="0.1"></div>
+        <div class="control-group"><label for="ty">Translate Y <span>0.0</span></label><input type="range" id="ty" min="-5" max="5" value="0" step="0.1"></div>
+        <div class="control-group"><label for="tz">Translate Z <span>0.0</span></label><input type="range" id="tz" min="-5" max="5" value="0" step="0.1"></div>
+        <h2>2. Rotation (Rx, Ry, Rz)</h2>
+        <div class="control-group"><label for="rx">Rotate X (Pitch) <span>0°</span></label><input type="range" id="rx" min="-180" max="180" value="0" step="1"></div>
+        <div class="control-group"><label for="ry">Rotate Y (Yaw) <span>0°</span></label><input type="range" id="ry" min="-180" max="180" value="0" step="1"></div>
+        <div class="control-group"><label for="rz">Rotate Z (Roll) <span>0°</span></label><input type="range" id="rz" min="-180" max="180" value="0" step="1"></div>
+        <h2>3. Scaling (Sx, Sy, Sz)</h2>
+        <div class="control-group"><label for="sx">Scale X <span>1.0</span></label><input type="range" id="sx" min="0.1" max="3" value="1" step="0.1"></div>
+        <div class="control-group"><label for="sy">Scale Y <span>1.0</span></label><input type="range" id="sy" min="0.1" max="3" value="1" step="0.1"></div>
+        <div class="control-group"><label for="sz">Scale Z <span>1.0</span></label><input type="range" id="sz" min="0.1" max="3" value="1" step="0.1"></div>
+        <h2>4. Shearing (Sh)</h2>
+        <div class="control-group"><label for="sh_xy">Shear X by Y (sh_xy) <span>0.0</span></label><input type="range" id="sh_xy" min="-1" max="1" value="0" step="0.1"></div>
+        <div class="control-group"><label for="sh_yx">Shear Y by X (sh_yx) <span>0.0</span></label><input type="range" id="sh_yx" min="-1" max="1" value="0" step="0.1"></div>
+        <h2>Final 4x4 Model Matrix</h2>
+        <div id="matrix-display"></div>
+        <button id="reset-btn">Reset All Values</button>
+    </div>
+
+    <div id="scene-container"></div>
+
+
+    <script>
+        // --- 1. GLOBAL VARIABLES ---
+        let scene, camera, renderer, cube, originalCube, gridHelper, axesHelper;
+        let controls; // (NEW) Variable for camera controls
+        
+        // References to UI elements
+        const sliders = {};
+        const sliderOutputs = {};
+        const matrixSpans = [];
+        
+        // --- 2. INITIALIZATION ---
+        function init() {
+            // Get the container
+            const container = document.getElementById('scene-container');
+
+            // --- Scene and Camera ---
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x222222);
+            
+            const fov = 75;
+            const aspect = container.clientWidth / container.clientHeight;
+            const near = 0.1;
+            const far = 1000;
+            camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
+            camera.position.set(3, 4, 7); // Initial camera position
+            camera.lookAt(0, 0, 0);
+
+            // --- Renderer ---
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            container.appendChild(renderer.domElement);
+            
+            // --- (NEW) ORBIT CONTROLS ---
+            // This connects your mouse/touch to the camera
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true; // Adds a nice "smoothing" effect
+            controls.dampingFactor = 0.05;
+            controls.target.set(0, 0, 0); // Make it orbit around the origin
+            controls.update();
+            // --- End of new controls ---
+
+            // --- Lighting ---
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+            directionalLight.position.set(1, 2, 1);
+            scene.add(directionalLight);
+
+            // --- Helpers ---
+            gridHelper = new THREE.GridHelper(10, 10, 0x888888, 0x444444);
+            scene.add(gridHelper);
+            axesHelper = new THREE.AxesHelper(3); // X=red, Y=green, Z=blue
+            scene.add(axesHelper);
+
+            // --- Create the Cubes ---
+            const geometry = new THREE.BoxGeometry(2, 2, 2); // 2x2x2 cube
+            const material = new THREE.MeshStandardMaterial({ color: 0xe74c3c });
+            cube = new THREE.Mesh(geometry, material);
+            cube.matrixAutoUpdate = false; 
+            scene.add(cube);
+            
+            const wireframeMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0xffffff, 
+                wireframe: true,
+                transparent: true,
+                opacity: 0.3
+            });
+            originalCube = new THREE.Mesh(geometry, wireframeMaterial);
+            scene.add(originalCube);
+
+            // --- Link UI Elements ---
+            const controlIds = [
+                'tx', 'ty', 'tz', 'rx', 'ry', 'rz', 'sx', 'sy', 'sz', 'sh_xy', 'sh_yx'
+            ];
+            
+            controlIds.forEach(id => {
+                sliders[id] = document.getElementById(id);
+                sliderOutputs[id] = document.querySelector(`label[for="${id}"] span`);
+                sliders[id].addEventListener('input', updateCube);
+            });
+            
+            // Get matrix display spans
+            const matrixContainer = document.getElementById('matrix-display');
+            for (let i = 0; i < 16; i++) {
+                const span = document.createElement('span');
+                matrixContainer.appendChild(span);
+                matrixSpans.push(span);
+            }
+            
+            document.getElementById('reset-btn').addEventListener('click', resetValues);
+            window.addEventListener('resize', onWindowResize);
+            
+            // First update
+            updateCube();
+        }
+
+        // --- 3. THE UPDATE CUBE FUNCTION ---
+        // (This function is unchanged)
+        function updateCube() {
+            // 1. Create all the individual transformation matrices
+            const tx = parseFloat(sliders.tx.value);
+            const ty = parseFloat(sliders.ty.value);
+            const tz = parseFloat(sliders.tz.value);
+            const matTranslate = new THREE.Matrix4().makeTranslation(tx, ty, tz);
+            
+            const rx = THREE.MathUtils.degToRad(parseFloat(sliders.rx.value));
+            const ry = THREE.MathUtils.degToRad(parseFloat(sliders.ry.value));
+            const rz = THREE.MathUtils.degToRad(parseFloat(sliders.rz.value));
+            const euler = new THREE.Euler(rx, ry, rz, 'XYZ');
+            const matRotate = new THREE.Matrix4().makeRotationFromEuler(euler);
+            
+            const sx = parseFloat(sliders.sx.value);
+            const sy = parseFloat(sliders.sy.value);
+            const sz = parseFloat(sliders.sz.value);
+            const matScale = new THREE.Matrix4().makeScale(sx, sy, sz);
+
+            const sh_xy = parseFloat(sliders.sh_xy.value);
+            const sh_yx = parseFloat(sliders.sh_yx.value);
+            const matShear = new THREE.Matrix4().identity();
+            matShear.set( 1, sh_yx, 0, 0, sh_xy, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 );
+
+            // 2. Combine the matrices
+            cube.matrix.identity(); // Reset
+            cube.matrix.multiply(matTranslate);
+            cube.matrix.multiply(matRotate);
+            cube.matrix.multiply(matShear);
+            cube.matrix.multiply(matScale);
+
+            // 3. Update the UI
+            updateUI();
+        }
+        
+        // (This function is unchanged)
+        function updateUI() {
+            for (const id in sliders) {
+                let value = parseFloat(sliders[id].value);
+                if (id.startsWith('r')) {
+                    sliderOutputs[id].innerText = `${value.toFixed(0)}°`;
+                } else {
+                    sliderOutputs[id].innerText = `${value.toFixed(1)}`;
+                }
+            }
+            const elements = cube.matrix.elements;
+            for (let i = 0; i < 16; i++) {
+                matrixSpans[i].innerText = elements[i].toFixed(2);
+            }
+        }
+        
+        // (This function is unchanged)
+        function resetValues() {
+            sliders.tx.value = 0; sliders.ty.value = 0; sliders.tz.value = 0;
+            sliders.rx.value = 0; sliders.ry.value = 0; sliders.rz.value = 0;
+            sliders.sx.value = 1; sliders.sy.value = 1; sliders.sz.value = 1;
+            sliders.sh_xy.value = 0; sliders.sh_yx.value = 0;
+            updateCube();
+        }
+        
+        // --- 4. RENDER LOOP ---
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // (NEW) This is required for the smoothing/damping to work
+            controls.update(); 
+            
+            renderer.render(scene, camera);
+        }
+
+        // --- 5. EVENT HANDLERS ---
+        // (This function is unchanged)
+        function onWindowResize() {
+            const container = document.getElementById('scene-container');
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
+
+        // --- 6. START THE SIMULATION ---
+        init();
+        animate();
+
+    </script>
+</body>
+</html>
