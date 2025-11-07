@@ -54,7 +54,6 @@
             margin-top: 20px; /* Increased margin */
         }
         
-        /* (NEW) "View Logic" Button */
         button#view-logic-btn {
             background-color: #3498db; /* Blue */
             color: white;
@@ -67,9 +66,8 @@
         }
         button#reset-btn:hover { background-color: #c0392b; }
 
-        /* --- (NEW) Modal / Popup Styles --- */
+        /* --- Modal / Popup Styles --- */
         
-        /* The dim background */
         #modal-overlay {
             display: none; /* Hidden by default */
             position: fixed; /* Stay in place */
@@ -81,7 +79,6 @@
             background-color: rgba(0,0,0,0.6); /* Black w/ opacity */
         }
 
-        /* The popup box */
         #modal-content {
             display: none; /* Hidden by default */
             position: fixed;
@@ -96,7 +93,6 @@
             min-width: 400px;
         }
 
-        /* The Close Button (X) */
         #modal-close {
             color: #aaa;
             float: right;
@@ -156,7 +152,7 @@
         <h2>3. Scaling (Sx, Sy, Sz)</h2>
         <div class="control-group"><label for="sx">Scale X <span>1.0</span></label><input type="range" id="sx" min="0.1" max="3" value="1" step="0.1"></div>
         <div class="control-group"><label for="sy">Scale Y <span>1.0</span></label><input type="range" id="sy" min="0.1" max="3" value="1" step="0.1"></div>
-        <div class="control-group"><label for="sz">Scale Z <span>1.0</span></label><input type="range" id="sz" min="0.1" max="3" value="1" step="0.1"></div>
+        <div class="control-group"><label for="sz">Scale X <span>1.0</span></label><input type="range" id="sz" min="0.1" max="3" value="1" step="0.1"></div>
         <h2>4. Shearing (Sh)</h2>
         <div class="control-group"><label for="sh_xy">Shear X by Y (sh_xy) <span>0.0</span></label><input type="range" id="sh_xy" min="-1" max="1" value="0" step="0.1"></div>
         <div class="control-group"><label for="sh_yx">Shear Y by X (sh_yx) <span>0.0</span></label><input type="range" id="sh_yx" min="-1" max="1" value="0" step="0.1"></div>
@@ -181,7 +177,8 @@
             <span class="math-symbol">=</span>
             <div id="final-matrix" class="matrix matrix-4x4"></div>
             <span class="math-symbol">*</span>
-            <div id="original-vector" class.matrix matrix-4x1"></div>
+            
+            <div id="original-vector" class="matrix matrix-4x1"></div>
         </div>
     </div>
 
@@ -197,7 +194,6 @@
         const resultSpans = [];
         const originalSpans = [];
         
-        // (NEW) Modal element references
         let modalOverlay, modalContent, closeModalBtn, viewLogicBtn;
         
         // --- 2. INITIALIZATION ---
@@ -220,14 +216,12 @@
             controls.target.set(0, 0, 0);
             controls.update();
 
-            // ... (Lighting and Helpers are unchanged) ...
             scene.add(new THREE.AmbientLight(0xffffff, 0.5));
             scene.add(new THREE.DirectionalLight(0xffffff, 0.5).position.set(1, 2, 1));
             scene.add(new THREE.GridHelper(10, 10, 0x888888, 0x444444));
             scene.add(new THREE.AxesHelper(3));
 
-            // ... (Cube creation is unchanged) ...
-            const geometry = new THREE.BoxGeometry(2, 2, 2); // Vertices are -1 to +1
+            const geometry = new THREE.BoxGeometry(2, 2, 2); 
             const material = new THREE.MeshStandardMaterial({ color: 0xe74c3c });
             cube = new THREE.Mesh(geometry, material);
             cube.matrixAutoUpdate = false; 
@@ -242,11 +236,10 @@
             controlIds.forEach(id => {
                 sliders[id] = document.getElementById(id);
                 sliderOutputs[id] = document.querySelector(`label[for="${id}"] span`);
-                // (CHANGED) Sliders now call updateSimulation directly
                 sliders[id].addEventListener('input', updateSimulation); 
             });
             
-            // --- (NEW) Link Modal UI Elements ---
+            // --- Link Modal UI Elements ---
             modalOverlay = document.getElementById('modal-overlay');
             modalContent = document.getElementById('modal-content');
             closeModalBtn = document.getElementById('modal-close');
@@ -255,7 +248,7 @@
             const finalMatrixContainer = document.getElementById('final-matrix');
             const resultVecContainer = document.getElementById('result-vector');
             const origVecContainer = document.getElementById('original-vector');
-            const originalVertexValues = [1, 1, 1, 1]; // Our example vertex (x,y,z,w)
+            const originalVertexValues = [1, 1, 1, 1]; 
 
             // Create 4x4 matrix spans
             for (let i = 0; i < 16; i++) {
@@ -271,15 +264,15 @@
                 resultSpans.push(resSpan);
                 
                 const origSpan = document.createElement('span');
-                origSpan.innerText = originalVertexValues[i].toFixed(1); // Set original to [1,1,1,1]
+                origSpan.innerText = originalVertexValues[i].toFixed(1); 
                 origVecContainer.appendChild(origSpan);
                 originalSpans.push(origSpan);
             }
             
-            // (NEW) Modal Event Listeners
+            // --- Modal Event Listeners ---
             viewLogicBtn.addEventListener('click', openModal);
             closeModalBtn.addEventListener('click', closeModal);
-            modalOverlay.addEventListener('click', closeModal); // Close when clicking background
+            modalOverlay.addEventListener('click', closeModal); 
             
             document.getElementById('reset-btn').addEventListener('click', resetValues);
             window.addEventListener('resize', onWindowResize);
@@ -287,10 +280,9 @@
             updateSimulation(); // Initial update
         }
 
-        // --- 3. (NEW) Combined Update Function ---
-        // This function runs every time a slider is moved
+        // --- 3. Combined Update Function ---
         function updateSimulation() {
-            // 1. Update slider text (from old updateSliderUI)
+            // 1. Update slider text
             for (const id in sliders) {
                 let value = parseFloat(sliders[id].value);
                 if (id.startsWith('r')) {
@@ -353,11 +345,10 @@
             sliders.sx.value = 1; sliders.sy.value = 1; sliders.sz.value = 1;
             sliders.sh_xy.value = 0; sliders.sh_yx.value = 0;
             
-            // Trigger the update
             updateSimulation();
         }
         
-        // --- 5. (NEW) MODAL FUNCTIONS ---
+        // --- 5. MODAL FUNCTIONS ---
         function openModal() {
             modalOverlay.style.display = 'block';
             modalContent.style.display = 'block';
