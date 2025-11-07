@@ -2,38 +2,88 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     
-    <title>3D Matrix Transformation Simulator (Space Shuttle)</title>
+    <title>3D Matrix Transformation Simulator (Mobile-Friendly)</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     
     <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    
-    <script src="https://unpkg.com/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 
     <style>
-        /* (The CSS is identical to the mobile-friendly version) */
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; line-height: 1.5; background-color: #f0f2f5; color: #333; margin: 0; }
-        #controls { width: 100%; padding: 20px; background-color: #fff; box-shadow: 0 2px 10px rgba(0,0,0,0.1); overflow-y: auto; box-sizing: border-box; max-height: 50vh; }
+        /* --- Page Layout --- */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.5;
+            background-color: #f0f2f5;
+            color: #333;
+            margin: 0;
+            /* (CHANGED) We start with a normal block layout */
+        }
+
+        /* --- Controls Panel (Left Side on Desktop) --- */
+        #controls {
+            /* (CHANGED) Set width to 100% by default */
+            width: 100%;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow-y: auto;
+            box-sizing: border-box; /* Include padding in height */
+            /* (CHANGED) Limit max height for controls on mobile */
+            max-height: 50vh; 
+        }
+
+        /* (All other CSS is the same as before...) */
         h1 { font-size: 1.5em; text-align: center; color: #2c3e50; border-bottom: 2px solid #e74c3c; padding-bottom: 10px; margin-top: 0; }
         h2 { font-size: 1.1em; color: #34495e; margin-top: 20px; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
         .control-group { margin-bottom: 15px; }
         .control-group label { display: flex; justify-content: space-between; font-size: 0.9em; font-weight: bold; }
         .control-group label span { font-weight: normal; color: #e74c3c; font-family: 'Courier New', Courier, monospace; }
         input[type="range"] { width: 100%; }
-        #scene-container { width: 100%; height: 50vh; background-color: #222; }
-        canvas { display: block; }
+
+        /* --- 3D Scene (Right Side on Desktop) --- */
+        #scene-container {
+            width: 100%;
+            /* (CHANGED) Set a fixed height for the mobile view */
+            height: 50vh; 
+            background-color: #222;
+        }
+        
+        canvas {
+            display: block;
+        }
+
+        /* (Matrix Display and Button styles are unchanged) */
         #matrix-display { background-color: #ecf0f1; padding: 15px; border-radius: 5px; font-family: 'Courier New', Courier, monospace; font-size: 1.1em; line-height: 1.4; display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; text-align: right; }
         #matrix-display span { padding: 5px; background: #fff; border: 1px solid #bdc3c7; border-radius: 3px; }
         button#reset-btn { width: 100%; padding: 10px; background-color: #e74c3c; color: white; border: none; border-radius: 5px; font-size: 1em; font-weight: bold; cursor: pointer; margin-top: 10px; }
         button#reset-btn:hover { background-color: #c0392b; }
         
+        
+        /* * (NEW) --- RESPONSIVE MEDIA QUERY ---
+         * This is the magic part. If the screen is 769px wide OR WIDER,
+         * it will apply the desktop styles.
+        */
         @media (min-width: 769px) {
-            body { display: flex; height: 100vh; }
-            #controls { width: 350px; height: 100vh; max-height: 100vh; }
-            #scene-container { flex-grow: 1; height: 100vh; }
+            body {
+                display: flex; /* Use flexbox for layout */
+                height: 100vh;
+            }
+            
+            #controls {
+                width: 350px; /* Fixed width for controls */
+                height: 100vh; /* Full height */
+                max-height: 100vh; /* Override mobile max-height */
+            }
+            
+            #scene-container {
+                flex-grow: 1; /* Take up remaining space */
+                height: 100vh; /* Full height */
+            }
         }
+        
     </style>
 </head>
 <body>
@@ -65,10 +115,8 @@
 
     <script>
         // --- 1. GLOBAL VARIABLES ---
-        let scene, camera, renderer, controls;
-        
-        // (CHANGED) We replace 'cube' with 'model'
-        let model, originalModel; 
+        let scene, camera, renderer, cube, originalCube, gridHelper, axesHelper;
+        let controls; 
         
         const sliders = {};
         const sliderOutputs = {};
@@ -78,75 +126,54 @@
         function init() {
             const container = document.getElementById('scene-container');
 
-            // --- Scene, Camera, Renderer, Controls ---
-            // (This is all the same as before)
+            // --- Scene and Camera ---
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x222222);
-            camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
+            
+            const fov = 75;
+            // (CHANGED) We calculate aspect from the container, which is now flexible
+            const aspect = container.clientWidth / container.clientHeight;
+            const near = 0.1;
+            const far = 1000;
+            camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
             camera.position.set(3, 4, 7); 
             camera.lookAt(0, 0, 0);
+
+            // --- Renderer ---
             renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
             container.appendChild(renderer.domElement);
+            
+            // --- ORBIT CONTROLS ---
             controls = new THREE.OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true; 
             controls.dampingFactor = 0.05;
             controls.target.set(0, 0, 0); 
             controls.update();
 
-            // --- Lighting ---
-            // (Increased light to see the model better)
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+            // (Lighting, Helpers, and Cubes are unchanged)
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
             scene.add(ambientLight);
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
             directionalLight.position.set(1, 2, 1);
             scene.add(directionalLight);
-
-            // --- Helpers (Grid/Axes) ---
-            scene.add(new THREE.GridHelper(10, 10, 0x888888, 0x444444));
-            scene.add(new THREE.AxesHelper(3));
-
-
-            // --- (NEW) LOAD THE 3D MODEL ---
-            const loader = new THREE.GLTFLoader();
-            const modelUrl = 'https://threejs.org/examples/models/gltf/Shuttle.glb';
-
-            loader.load(modelUrl, function (gltf) {
-                // --- This function runs when the model is finished loading ---
-                
-                // 1. Get the main model
-                model = gltf.scene;
-                
-                // (Optional) Scale the model down if it's too big
-                model.scale.set(0.5, 0.5, 0.5); 
-                
-                // THIS IS KEY: We will control the matrix manually
-                model.matrixAutoUpdate = false; 
-                scene.add(model);
-
-                // 2. Create the "ghost" model
-                originalModel = model.clone();
-                const wireframeMaterial = new THREE.MeshBasicMaterial({ 
-                    color: 0xffffff, 
-                    wireframe: true,
-                    transparent: true,
-                    opacity: 0.3
-                });
-                
-                // Apply wireframe to all parts of the cloned model
-                originalModel.traverse((node) => {
-                    if (node.isMesh) {
-                        node.material = wireframeMaterial;
-                    }
-                });
-                scene.add(originalModel);
-
-                // 3. Now that the model is loaded, apply initial slider values
-                updateModel();
-                
-            }, undefined, function (error) {
-                console.error('An error happened while loading the model:', error);
+            gridHelper = new THREE.GridHelper(10, 10, 0x888888, 0x444444);
+            scene.add(gridHelper);
+            axesHelper = new THREE.AxesHelper(3);
+            scene.add(axesHelper);
+            const geometry = new THREE.BoxGeometry(2, 2, 2); 
+            const material = new THREE.MeshStandardMaterial({ color: 0xe74c3c });
+            cube = new THREE.Mesh(geometry, material);
+            cube.matrixAutoUpdate = false; 
+            scene.add(cube);
+            const wireframeMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0xffffff, 
+                wireframe: true,
+                transparent: true,
+                opacity: 0.3
             });
-
+            originalCube = new THREE.Mesh(geometry, wireframeMaterial);
+            scene.add(originalCube);
 
             // --- Link UI Elements ---
             const controlIds = [
@@ -156,8 +183,7 @@
             controlIds.forEach(id => {
                 sliders[id] = document.getElementById(id);
                 sliderOutputs[id] = document.querySelector(`label[for="${id}"] span`);
-                // (CHANGED) Call updateModel instead of updateCube
-                sliders[id].addEventListener('input', updateModel);
+                sliders[id].addEventListener('input', updateCube);
             });
             
             const matrixContainer = document.getElementById('matrix-display');
@@ -168,22 +194,17 @@
             }
             
             document.getElementById('reset-btn').addEventListener('click', resetValues);
-            window.addEventListener('resize', onWindowResize);
-            onWindowResize(); 
             
-            // We can't call updateModel() here anymore, 
-            // because the 'model' doesn't exist yet!
+            // (CHANGED) We now call onWindowResize right away
+            window.addEventListener('resize', onWindowResize);
+            onWindowResize(); // Call once to set initial size
+            
+            updateCube();
         }
 
-        // --- 3. THE UPDATE MODEL FUNCTION ---
-        // (CHANGED) Renamed from updateCube to updateModel
-        function updateModel() {
-            // This stops errors if the sliders are moved before the model loads
-            if (!model) {
-                return; 
-            }
-
-            // 1. Create all the individual transformation matrices
+        // --- 3. THE UPDATE CUBE FUNCTION ---
+        // (This function is unchanged)
+        function updateCube() {
             const tx = parseFloat(sliders.tx.value);
             const ty = parseFloat(sliders.ty.value);
             const tz = parseFloat(sliders.tz.value);
@@ -205,21 +226,17 @@
             const matShear = new THREE.Matrix4().identity();
             matShear.set( 1, sh_yx, 0, 0, sh_xy, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 );
 
-            // 2. Combine the matrices
-            // (CHANGED) Apply to 'model.matrix'
-            model.matrix.identity(); // Reset
-            model.matrix.multiply(matTranslate);
-            model.matrix.multiply(matRotate);
-            model.matrix.multiply(matShear);
-            model.matrix.multiply(matScale);
+            cube.matrix.identity(); 
+            cube.matrix.multiply(matTranslate);
+            cube.matrix.multiply(matRotate);
+            cube.matrix.multiply(matShear);
+            cube.matrix.multiply(matScale);
 
-            // 3. Update the UI
             updateUI();
         }
         
-        // (CHANGED) Renamed from updateUI
+        // (This function is unchanged)
         function updateUI() {
-            // Update slider text
             for (const id in sliders) {
                 let value = parseFloat(sliders[id].value);
                 if (id.startsWith('r')) {
@@ -228,52 +245,52 @@
                     sliderOutputs[id].innerText = `${value.toFixed(1)}`;
                 }
             }
-            
-            // This stops errors if the UI updates before the model loads
-            if (!model) {
-                return;
-            }
-            
-            // Update the 4x4 matrix display
-            // (CHANGED) Read from 'model.matrix.elements'
-            const elements = model.matrix.elements;
+            const elements = cube.matrix.elements;
             for (let i = 0; i < 16; i++) {
                 matrixSpans[i].innerText = elements[i].toFixed(2);
             }
         }
         
+        // (This function is unchanged)
         function resetValues() {
             sliders.tx.value = 0; sliders.ty.value = 0; sliders.tz.value = 0;
             sliders.rx.value = 0; sliders.ry.value = 0; sliders.rz.value = 0;
             sliders.sx.value = 1; sliders.sy.value = 1; sliders.sz.value = 1;
             sliders.sh_xy.value = 0; sliders.sh_yx.value = 0;
-            // (CHANGED) Call updateModel
-            updateModel();
+            updateCube();
         }
         
         // --- 4. RENDER LOOP ---
         function animate() {
             requestAnimationFrame(animate);
-            controls.update(); IAmStillHere();
+            controls.update(); 
             renderer.render(scene, camera);
         }
 
         // --- 5. EVENT HANDLERS ---
+        // (CHANGED) This function is now more important
         function onWindowResize() {
             const container = document.getElementById('scene-container');
+            
+            // Get the new width and height
+            // We have to check if we are in desktop or mobile layout
             let newWidth, newHeight;
             
             if (window.innerWidth < 769) {
+                // Mobile layout
                 newWidth = window.innerWidth;
                 newHeight = window.innerHeight * 0.5; // 50vh
             } else {
-                newWidth = window.innerWidth - 350; 
-                newHeight = window.innerHeight;
+                // Desktop layout
+                newWidth = window.innerWidth - 350; // Subtract control panel width
+                newHeight = window.innerHeight; // Full height
             }
             
+            // (CHANGED) Manually set the container size to be sure
             container.style.width = `${newWidth}px`;
             container.style.height = `${newHeight}px`;
 
+            // Update camera and renderer
             camera.aspect = newWidth / newHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(newWidth, newHeight);
