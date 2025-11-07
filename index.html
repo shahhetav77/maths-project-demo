@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Matrix Transformation Simulator (Full Equation)</title>
+    <title>3D Matrix Transformation Simulator (Dynamic)</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
@@ -42,56 +42,6 @@
         #scene-container { flex-grow: 1; height: 100vh; background-color: #222; }
         canvas { display: block; }
         
-        /* --- Matrix Display --- */
-        .matrix {
-            font-family: 'Courier New', Courier, monospace;
-            font-size: 1.1em;
-            line-height: 1.4;
-            text-align: right;
-        }
-        
-        /* (NEW) Container for the whole calculation */
-        #calculation-display {
-            display: flex;
-            align-items: center;
-            justify-content: space-around;
-            background-color: #ecf0f1;
-            padding: 10px;
-            border-radius: 5px;
-            margin-top: 10px;
-        }
-        
-        /* (NEW) Styles for the 4x1 vectors */
-        .matrix-4x1 {
-            display: grid;
-            grid-template-rows: repeat(4, 1fr);
-            gap: 5px;
-        }
-        
-        /* (NEW) Styles for the 4x4 matrix */
-        .matrix-4x4 {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 5px;
-            padding: 0 10px;
-        }
-
-        /* Shared style for all matrix cells */
-        .matrix-4x1 span, .matrix-4x4 span {
-            padding: 5px;
-            background: #fff;
-            border: 1px solid #bdc3c7;
-            border-radius: 3px;
-            min-width: 30px; /* Ensure consistent width */
-        }
-        
-        /* (NEW) Style for the math symbols */
-        .math-symbol {
-            font-size: 1.5em;
-            font-weight: bold;
-            color: #34495e;
-        }
-        
         /* --- Button Styles --- */
         button {
             width: 100%;
@@ -101,21 +51,90 @@
             font-size: 1em;
             font-weight: bold;
             cursor: pointer;
-            margin-top: 10px;
+            margin-top: 20px; /* Increased margin */
         }
         
-        button#apply-btn {
+        button#view-logic-btn {
             background-color: #3498db; /* Blue */
             color: white;
-            margin-top: 20px;
         }
-        button#apply-btn:hover { background-color: #2980b9; }
+        button#view-logic-btn:hover { background-color: #2980b9; }
         
         button#reset-btn {
             background-color: #e74c3c; /* Red */
             color: white;
         }
         button#reset-btn:hover { background-color: #c0392b; }
+
+        /* --- Modal / Popup Styles --- */
+        
+        #modal-overlay {
+            display: none; /* Hidden by default */
+            position: fixed; /* Stay in place */
+            z-index: 100; /* Sit on top */
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.6); /* Black w/ opacity */
+        }
+
+        #modal-content {
+            display: none; /* Hidden by default */
+            position: fixed;
+            z-index: 101;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%); /* Center it */
+            background-color: #fefefe;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            min-width: 400px;
+        }
+
+        #modal-close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            line-height: 1;
+            padding: 0 5px;
+            cursor: pointer;
+        }
+        #modal-close:hover { color: #000; }
+        
+        /* --- Matrix Display (Now inside modal) --- */
+        .matrix {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 1.1em;
+            line-height: 1.4;
+            text-align: right;
+        }
+        
+        #calculation-display {
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            background-color: #ecf0f1;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        
+        .matrix-4x1 { display: grid; grid-template-rows: repeat(4, 1fr); gap: 5px; }
+        .matrix-4x4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; padding: 0 10px; }
+
+        .matrix-4x1 span, .matrix-4x4 span {
+            padding: 5px;
+            background: #fff;
+            border: 1px solid #bdc3c7;
+            border-radius: 3px;
+            min-width: 30px; /* Ensure consistent width */
+        }
+        
+        .math-symbol { font-size: 1.5em; font-weight: bold; color: #34495e; }
+        
     </style>
 </head>
 <body>
@@ -133,25 +152,35 @@
         <h2>3. Scaling (Sx, Sy, Sz)</h2>
         <div class="control-group"><label for="sx">Scale X <span>1.0</span></label><input type="range" id="sx" min="0.1" max="3" value="1" step="0.1"></div>
         <div class="control-group"><label for="sy">Scale Y <span>1.0</span></label><input type="range" id="sy" min="0.1" max="3" value="1" step="0.1"></div>
-        <div class="control-group"><label for="sz">Scale Z <span>1.0</span></label><input type="range" id="sz" min="0.1" max="3" value="1" step="0.1"></div>
+        <div class="control-group"><label for="sz">Scale X <span>1.0</span></label><input type="range" id="sz" min="0.1" max="3" value="1" step="0.1"></div>
         <h2>4. Shearing (Sh)</h2>
         <div class="control-group"><label for="sh_xy">Shear X by Y (sh_xy) <span>0.0</span></label><input type="range" id="sh_xy" min="-1" max="1" value="0" step="0.1"></div>
         <div class="control-group"><label for="sh_yx">Shear Y by X (sh_yx) <span>0.0</span></label><input type="range" id="sh_yx" min="-1" max="1" value="0" step="0.1"></div>
         
-        <button id="apply-btn">Apply All Transformations</button>
+        <button id="view-logic-btn">View Matrix Logic</button>
         <button id="reset-btn">Reset All</button>
 
+    </div>
+
+    <div id="scene-container"></div>
+    
+    
+    <div id="modal-overlay"></div>
+    
+    <div id="modal-content">
+        <span id="modal-close">&times;</span> 
+        
         <h2>Example Calculation (New = Final * Original)</h2>
+        
         <div id="calculation-display">
             <div id="result-vector" class="matrix matrix-4x1"></div>
             <span class="math-symbol">=</span>
             <div id="final-matrix" class="matrix matrix-4x4"></div>
             <span class="math-symbol">*</span>
+            
             <div id="original-vector" class="matrix matrix-4x1"></div>
         </div>
     </div>
-
-    <div id="scene-container"></div>
 
 
     <script>
@@ -161,11 +190,11 @@
         
         const sliders = {};
         const sliderOutputs = {};
-        
-        // (NEW) Separate spans for each part of the equation
         const matrixSpans = [];
         const resultSpans = [];
         const originalSpans = [];
+        
+        let modalOverlay, modalContent, closeModalBtn, viewLogicBtn;
         
         // --- 2. INITIALIZATION ---
         function init() {
@@ -187,14 +216,12 @@
             controls.target.set(0, 0, 0);
             controls.update();
 
-            // ... (Lighting and Helpers are unchanged) ...
             scene.add(new THREE.AmbientLight(0xffffff, 0.5));
             scene.add(new THREE.DirectionalLight(0xffffff, 0.5).position.set(1, 2, 1));
             scene.add(new THREE.GridHelper(10, 10, 0x888888, 0x444444));
             scene.add(new THREE.AxesHelper(3));
 
-            // ... (Cube creation is unchanged) ...
-            const geometry = new THREE.BoxGeometry(2, 2, 2); // Vertices are -1 to +1
+            const geometry = new THREE.BoxGeometry(2, 2, 2); 
             const material = new THREE.MeshStandardMaterial({ color: 0xe74c3c });
             cube = new THREE.Mesh(geometry, material);
             cube.matrixAutoUpdate = false; 
@@ -209,14 +236,19 @@
             controlIds.forEach(id => {
                 sliders[id] = document.getElementById(id);
                 sliderOutputs[id] = document.querySelector(`label[for="${id}"] span`);
-                sliders[id].addEventListener('input', updateSliderUI); 
+                sliders[id].addEventListener('input', updateSimulation); 
             });
             
-            // (NEW) Populate the calculation display
+            // --- Link Modal UI Elements ---
+            modalOverlay = document.getElementById('modal-overlay');
+            modalContent = document.getElementById('modal-content');
+            closeModalBtn = document.getElementById('modal-close');
+            viewLogicBtn = document.getElementById('view-logic-btn');
+            
             const finalMatrixContainer = document.getElementById('final-matrix');
             const resultVecContainer = document.getElementById('result-vector');
             const origVecContainer = document.getElementById('original-vector');
-            const originalVertexValues = [1, 1, 1, 1]; // Our example vertex (x,y,z,w)
+            const originalVertexValues = [1, 1, 1, 1]; 
 
             // Create 4x4 matrix spans
             for (let i = 0; i < 16; i++) {
@@ -232,22 +264,25 @@
                 resultSpans.push(resSpan);
                 
                 const origSpan = document.createElement('span');
-                origSpan.innerText = originalVertexValues[i].toFixed(1); // Set original to [1,1,1,1]
+                origSpan.innerText = originalVertexValues[i].toFixed(1); 
                 origVecContainer.appendChild(origSpan);
                 originalSpans.push(origSpan);
             }
             
-            document.getElementById('apply-btn').addEventListener('click', applyChanges);
+            // --- Modal Event Listeners ---
+            viewLogicBtn.addEventListener('click', openModal);
+            closeModalBtn.addEventListener('click', closeModal);
+            modalOverlay.addEventListener('click', closeModal); 
+            
             document.getElementById('reset-btn').addEventListener('click', resetValues);
             window.addEventListener('resize', onWindowResize);
             
-            updateSliderUI(); // Update all the <span> text
-            applyChanges();   // Apply the default values
+            updateSimulation(); // Initial update
         }
 
-        // --- 3. UPDATE SLIDER UI FUNCTION ---
-        // (Unchanged) This function ONLY updates the text (<span>) next to the sliders.
-        function updateSliderUI() {
+        // --- 3. Combined Update Function ---
+        function updateSimulation() {
+            // 1. Update slider text
             for (const id in sliders) {
                 let value = parseFloat(sliders[id].value);
                 if (id.startsWith('r')) {
@@ -256,12 +291,8 @@
                     sliderOutputs[id].innerText = `${value.toFixed(1)}`;
                 }
             }
-        }
-        
-        // --- 4. APPLY CHANGES FUNCTION ---
-        // (CHANGED) This function now also updates the example calculation.
-        function applyChanges() {
-            // 1. Create all the individual transformation matrices
+            
+            // 2. Create all the individual transformation matrices
             const tx = parseFloat(sliders.tx.value);
             const ty = parseFloat(sliders.ty.value);
             const tz = parseFloat(sliders.tz.value);
@@ -283,43 +314,49 @@
             const matShear = new THREE.Matrix4().identity();
             matShear.set( 1, sh_yx, 0, 0, sh_xy, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 );
 
-            // 2. Combine the matrices and apply to the cube
+            // 3. Combine the matrices and apply to the cube
             cube.matrix.identity(); // Reset
             cube.matrix.multiply(matTranslate);
             cube.matrix.multiply(matRotate);
             cube.matrix.multiply(matShear);
             cube.matrix.multiply(matScale);
 
-            // 3. Update the 4x4 Matrix Display
+            // 4. Update the 4x4 Matrix Display (inside the hidden modal)
             const elements = cube.matrix.elements;
             for (let i = 0; i < 16; i++) {
                 matrixSpans[i].innerText = elements[i].toFixed(2);
             }
             
-            // 4. (NEW) Perform the example calculation
-            // Our original vertex is (1, 1, 1, 1)
+            // 5. Perform the example calculation
             const v_orig = new THREE.Vector4(1, 1, 1, 1);
-            
-            // Apply the final matrix to this vector
-            // v_result = cube.matrix * v_orig
             const v_result = v_orig.clone().applyMatrix4(cube.matrix);
             
-            // 5. (NEW) Update the result vector display
+            // 6. Update the result vector display (inside the hidden modal)
             resultSpans[0].innerText = v_result.x.toFixed(2);
             resultSpans[1].innerText = v_result.y.toFixed(2);
             resultSpans[2].innerText = v_result.z.toFixed(2);
             resultSpans[3].innerText = v_result.w.toFixed(2);
         }
         
-        // --- 5. RESET VALUES FUNCTION ---
+        // --- 4. RESET VALUES FUNCTION ---
         function resetValues() {
             sliders.tx.value = 0; sliders.ty.value = 0; sliders.tz.value = 0;
             sliders.rx.value = 0; sliders.ry.value = 0; sliders.rz.value = 0;
             sliders.sx.value = 1; sliders.sy.value = 1; sliders.sz.value = 1;
             sliders.sh_xy.value = 0; sliders.sh_yx.value = 0;
             
-            updateSliderUI();
-            applyChanges();
+            updateSimulation();
+        }
+        
+        // --- 5. MODAL FUNCTIONS ---
+        function openModal() {
+            modalOverlay.style.display = 'block';
+            modalContent.style.display = 'block';
+        }
+        
+        function closeModal() {
+            modalOverlay.style.display = 'none';
+            modalContent.style.display = 'none';
         }
         
         // --- 6. RENDER LOOP ---
