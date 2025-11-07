@@ -3,10 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Matrix Transformation Simulator (with Camera Controls)</title>
+    <title>3D Matrix Transformation Simulator (Staging)</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    
     <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 
     <style>
@@ -17,7 +16,7 @@
             background-color: #f0f2f5;
             color: #333;
             margin: 0;
-            display: flex; /* Use flexbox for layout */
+            display: flex;
             height: 100vh;
         }
 
@@ -31,20 +30,52 @@
             height: 100vh;
             box-sizing: border-box; /* Include padding in height */
         }
-
-        /* (All other CSS is the same as before...) */
+        
         h1 { font-size: 1.5em; text-align: center; color: #2c3e50; border-bottom: 2px solid #e74c3c; padding-bottom: 10px; margin-top: 0; }
         h2 { font-size: 1.1em; color: #34495e; margin-top: 20px; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
         .control-group { margin-bottom: 15px; }
         .control-group label { display: flex; justify-content: space-between; font-size: 0.9em; font-weight: bold; }
         .control-group label span { font-weight: normal; color: #e74c3c; font-family: 'Courier New', Courier, monospace; }
         input[type="range"] { width: 100%; }
+        
+        /* --- 3D Scene (Right Side) --- */
         #scene-container { flex-grow: 1; height: 100vh; background-color: #222; }
         canvas { display: block; }
+        
+        /* --- Matrix Display --- */
         #matrix-display { background-color: #ecf0f1; padding: 15px; border-radius: 5px; font-family: 'Courier New', Courier, monospace; font-size: 1.1em; line-height: 1.4; display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; text-align: right; }
         #matrix-display span { padding: 5px; background: #fff; border: 1px solid #bdc3c7; border-radius: 3px; }
-        button#reset-btn { width: 100%; padding: 10px; background-color: #e74c3c; color: white; border: none; border-radius: 5px; font-size: 1em; font-weight: bold; cursor: pointer; margin-top: 10px; }
-        button#reset-btn:hover { background-color: #c0392b; }
+        
+        /* --- (NEW) Button Styles --- */
+        button {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        
+        /* (NEW) Primary "Apply" Button */
+        button#apply-btn {
+            background-color: #3498db; /* Blue */
+            color: white;
+            margin-top: 20px;
+        }
+        button#apply-btn:hover {
+            background-color: #2980b9;
+        }
+        
+        /* "Reset" Button */
+        button#reset-btn {
+            background-color: #e74c3c; /* Red */
+            color: white;
+        }
+        button#reset-btn:hover {
+            background-color: #c0392b;
+        }
     </style>
 </head>
 <body>
@@ -66,9 +97,12 @@
         <h2>4. Shearing (Sh)</h2>
         <div class="control-group"><label for="sh_xy">Shear X by Y (sh_xy) <span>0.0</span></label><input type="range" id="sh_xy" min="-1" max="1" value="0" step="0.1"></div>
         <div class="control-group"><label for="sh_yx">Shear Y by X (sh_yx) <span>0.0</span></label><input type="range" id="sh_yx" min="-1" max="1" value="0" step="0.1"></div>
+        
+        <button id="apply-btn">Apply Transformations</button>
+        <button id="reset-btn">Reset All</button>
+
         <h2>Final 4x4 Model Matrix</h2>
         <div id="matrix-display"></div>
-        <button id="reset-btn">Reset All Values</button>
     </div>
 
     <div id="scene-container"></div>
@@ -77,19 +111,15 @@
     <script>
         // --- 1. GLOBAL VARIABLES ---
         let scene, camera, renderer, cube, originalCube, gridHelper, axesHelper;
-        let controls; // (NEW) Variable for camera controls
+        let controls; 
         
-        // References to UI elements
         const sliders = {};
         const sliderOutputs = {};
         const matrixSpans = [];
         
         // --- 2. INITIALIZATION ---
         function init() {
-            // Get the container
             const container = document.getElementById('scene-container');
-
-            // --- Scene and Camera ---
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x222222);
             
@@ -98,38 +128,31 @@
             const near = 0.1;
             const far = 1000;
             camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
-            camera.position.set(3, 4, 7); // Initial camera position
+            camera.position.set(3, 4, 7);
             camera.lookAt(0, 0, 0);
 
-            // --- Renderer ---
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(container.clientWidth, container.clientHeight);
             container.appendChild(renderer.domElement);
             
-            // --- (NEW) ORBIT CONTROLS ---
-            // This connects your mouse/touch to the camera
             controls = new THREE.OrbitControls(camera, renderer.domElement);
-            controls.enableDamping = true; // Adds a nice "smoothing" effect
+            controls.enableDamping = true;
             controls.dampingFactor = 0.05;
-            controls.target.set(0, 0, 0); // Make it orbit around the origin
+            controls.target.set(0, 0, 0);
             controls.update();
-            // --- End of new controls ---
 
-            // --- Lighting ---
             const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
             scene.add(ambientLight);
             const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
             directionalLight.position.set(1, 2, 1);
             scene.add(directionalLight);
 
-            // --- Helpers ---
             gridHelper = new THREE.GridHelper(10, 10, 0x888888, 0x444444);
             scene.add(gridHelper);
-            axesHelper = new THREE.AxesHelper(3); // X=red, Y=green, Z=blue
+            axesHelper = new THREE.AxesHelper(3);
             scene.add(axesHelper);
 
-            // --- Create the Cubes ---
-            const geometry = new THREE.BoxGeometry(2, 2, 2); // 2x2x2 cube
+            const geometry = new THREE.BoxGeometry(2, 2, 2);
             const material = new THREE.MeshStandardMaterial({ color: 0xe74c3c });
             cube = new THREE.Mesh(geometry, material);
             cube.matrixAutoUpdate = false; 
@@ -144,7 +167,7 @@
             originalCube = new THREE.Mesh(geometry, wireframeMaterial);
             scene.add(originalCube);
 
-            // --- Link UI Elements ---
+            // --- (CHANGED) Link UI Elements ---
             const controlIds = [
                 'tx', 'ty', 'tz', 'rx', 'ry', 'rz', 'sx', 'sy', 'sz', 'sh_xy', 'sh_yx'
             ];
@@ -152,10 +175,11 @@
             controlIds.forEach(id => {
                 sliders[id] = document.getElementById(id);
                 sliderOutputs[id] = document.querySelector(`label[for="${id}"] span`);
-                sliders[id].addEventListener('input', updateCube);
+                
+                // (CHANGED) Sliders now ONLY update the UI text, not the cube
+                sliders[id].addEventListener('input', updateSliderUI); 
             });
             
-            // Get matrix display spans
             const matrixContainer = document.getElementById('matrix-display');
             for (let i = 0; i < 16; i++) {
                 const span = document.createElement('span');
@@ -163,16 +187,37 @@
                 matrixSpans.push(span);
             }
             
+            // (NEW) Apply Button Listener
+            document.getElementById('apply-btn').addEventListener('click', applyChanges);
+            
+            // Reset Button Listener
             document.getElementById('reset-btn').addEventListener('click', resetValues);
+            
             window.addEventListener('resize', onWindowResize);
             
-            // First update
-            updateCube();
+            // --- (CHANGED) First update ---
+            updateSliderUI(); // Update all the <span> text
+            applyChanges();   // Apply the default values to the cube and matrix
         }
 
-        // --- 3. THE UPDATE CUBE FUNCTION ---
-        // (This function is unchanged)
-        function updateCube() {
+        // --- 3. (NEW) UPDATE SLIDER UI FUNCTION ---
+        // This function ONLY updates the text (<span>) next to the sliders.
+        // It does not do any 3D math.
+        function updateSliderUI() {
+            for (const id in sliders) {
+                let value = parseFloat(sliders[id].value);
+                if (id.startsWith('r')) {
+                    sliderOutputs[id].innerText = `${value.toFixed(0)}°`;
+                } else {
+                    sliderOutputs[id].innerText = `${value.toFixed(1)}`;
+                }
+            }
+        }
+        
+        // --- 4. (NEW) APPLY CHANGES FUNCTION ---
+        // This function reads all sliders and updates the 3D model
+        // and the 4x4 matrix. It's only called when you press "Apply".
+        function applyChanges() {
             // 1. Create all the individual transformation matrices
             const tx = parseFloat(sliders.tx.value);
             const ty = parseFloat(sliders.ty.value);
@@ -202,47 +247,36 @@
             cube.matrix.multiply(matShear);
             cube.matrix.multiply(matScale);
 
-            // 3. Update the UI
-            updateUI();
-        }
-        
-        // (This function is unchanged)
-        function updateUI() {
-            for (const id in sliders) {
-                let value = parseFloat(sliders[id].value);
-                if (id.startsWith('r')) {
-                    sliderOutputs[id].innerText = `${value.toFixed(0)}°`;
-                } else {
-                    sliderOutputs[id].innerText = `${value.toFixed(1)}`;
-                }
-            }
+            // 3. Update the 4x4 Matrix Display
             const elements = cube.matrix.elements;
             for (let i = 0; i < 16; i++) {
                 matrixSpans[i].innerText = elements[i].toFixed(2);
             }
         }
         
-        // (This function is unchanged)
+        // --- 5. (CHANGED) RESET VALUES FUNCTION ---
         function resetValues() {
+            // Reset all slider values
             sliders.tx.value = 0; sliders.ty.value = 0; sliders.tz.value = 0;
             sliders.rx.value = 0; sliders.ry.value = 0; sliders.rz.value = 0;
             sliders.sx.value = 1; sliders.sy.value = 1; sliders.sz.value = 1;
             sliders.sh_xy.value = 0; sliders.sh_yx.value = 0;
-            updateCube();
+            
+            // Update the slider text
+            updateSliderUI();
+            
+            // Apply these changes to the 3D model
+            applyChanges();
         }
         
-        // --- 4. RENDER LOOP ---
+        // --- 6. RENDER LOOP ---
         function animate() {
             requestAnimationFrame(animate);
-            
-            // (NEW) This is required for the smoothing/damping to work
             controls.update(); 
-            
             renderer.render(scene, camera);
         }
 
-        // --- 5. EVENT HANDLERS ---
-        // (This function is unchanged)
+        // --- 7. EVENT HANDLERS ---
         function onWindowResize() {
             const container = document.getElementById('scene-container');
             camera.aspect = container.clientWidth / container.clientHeight;
@@ -250,7 +284,7 @@
             renderer.setSize(container.clientWidth, container.clientHeight);
         }
 
-        // --- 6. START THE SIMULATION ---
+        // --- 8. START THE SIMULATION ---
         init();
         animate();
 
