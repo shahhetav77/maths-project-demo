@@ -140,8 +140,12 @@
 
             scene.add(new THREE.AmbientLight(0xffffff, 0.5));
             scene.add(new THREE.DirectionalLight(0xffffff, 0.5).position.set(1, 2, 1));
-            scene.add(new THREE.GridHelper(10, 10, 0x888888, 0x444444));
-            scene.add(new THREE.AxesHelper(3));
+            
+            // (FIX) Add grid and axes back to the scene
+            gridHelper = new THREE.GridHelper(10, 10, 0x888888, 0x444444);
+            scene.add(gridHelper);
+            axesHelper = new THREE.AxesHelper(3);
+            scene.add(axesHelper);
 
             // --- Create Cubes (with Edges) ---
             const geometry = new THREE.BoxGeometry(2, 2, 2); 
@@ -155,6 +159,7 @@
             cube.add(cubeEdges); 
             scene.add(cube);
             
+            // (FIX) Add ghost cube back to the scene
             const wireframeMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true, transparent: true, opacity: 0.3 });
             originalCube = new THREE.Mesh(geometry, wireframeMaterial);
             scene.add(originalCube);
@@ -247,10 +252,10 @@
             cube.matrix.identity(); // Reset
             cube.matrix.multiply(matTranslate);
             cube.matrix.multiply(matRotate);
-            cube.matrix.multiply(matShear);
+            cube.matrix.multiply(matSheAR);
             cube.matrix.multiply(matScale);
 
-            // 4. (FIXED) Update the 4x4 Matrix Display (Column-Major)
+            // 4. Update the 4x4 Matrix Display (Column-Major)
             const elements = cube.matrix.elements;
             
             // Row 1
@@ -285,8 +290,9 @@
             resultSpans[0].innerText = v_result.x.toFixed(2);
             resultSpans[1].innerText = v_result.y.toFixed(2);
             resultSpans[2].innerText = v_result.z.toFixed(2);
+            
+            // (FIXED) This is the line that had the typo.
             resultSpans[3].innerText = v_result.w.toFixed(2);
-S
         }
         
         // --- 4. RESET VALUES FUNCTION ---
