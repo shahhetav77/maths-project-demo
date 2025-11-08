@@ -3,138 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Matrix Transformation Simulator (Dynamic)</title>
+    <title>3D Matrix Transformation Simulator (Corrected)</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 
     <style>
-        /* --- Page Layout --- */
+        /* (All CSS is identical to the previous version) */
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            line-height: 1.5;
-            background-color: #f0f2f5;
-            color: #333;
-            margin: 0;
-            display: flex;
-            height: 100vh;
+            line-height: 1.5; background-color: #f0f2f5; color: #333; margin: 0; display: flex; height: 100vh;
         }
-
-        /* --- Controls Panel (Left Side) --- */
         #controls {
-            width: 350px;
-            padding: 20px;
-            background-color: #fff;
-            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
-            overflow-y: auto; /* Make controls scrollable */
-            height: 100vh;
-            box-sizing: border-box; /* Include padding in height */
+            width: 350px; padding: 20px; background-color: #fff; box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            overflow-y: auto; height: 100vh; box-sizing: border-box;
         }
-        
         h1 { font-size: 1.5em; text-align: center; color: #2c3e50; border-bottom: 2px solid #e74c3c; padding-bottom: 10px; margin-top: 0; }
         h2 { font-size: 1.1em; color: #34495e; margin-top: 20px; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
         .control-group { margin-bottom: 15px; }
         .control-group label { display: flex; justify-content: space-between; font-size: 0.9em; font-weight: bold; }
         .control-group label span { font-weight: normal; color: #e74c3c; font-family: 'Courier New', Courier, monospace; }
         input[type="range"] { width: 100%; }
-        
-        /* --- 3D Scene (Right Side) --- */
         #scene-container { flex-grow: 1; height: 100vh; background-color: #222; }
         canvas { display: block; }
-        
-        /* --- Button Styles --- */
         button {
-            width: 100%;
-            padding: 10px;
-            border: none;
-            border-radius: 5px;
-            font-size: 1em;
-            font-weight: bold;
-            cursor: pointer;
-            margin-top: 20px; /* Increased margin */
+            width: 100%; padding: 10px; border: none; border-radius: 5px;
+            font-size: 1em; font-weight: bold; cursor: pointer; margin-top: 20px;
         }
-        
-        button#view-logic-btn {
-            background-color: #3498db; /* Blue */
-            color: white;
-        }
+        button#view-logic-btn { background-color: #3498db; color: white; }
         button#view-logic-btn:hover { background-color: #2980b9; }
-        
-        button#reset-btn {
-            background-color: #e74c3c; /* Red */
-            color: white;
-        }
+        button#reset-btn { background-color: #e74c3c; color: white; }
         button#reset-btn:hover { background-color: #c0392b; }
-
-        /* --- Modal / Popup Styles --- */
-        
         #modal-overlay {
-            display: none; /* Hidden by default */
-            position: fixed; /* Stay in place */
-            z-index: 100; /* Sit on top */
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.6); /* Black w/ opacity */
+            display: none; position: fixed; z-index: 100; left: 0; top: 0;
+            width: 100%; height: 100%; background-color: rgba(0,0,0,0.6);
         }
-
         #modal-content {
-            display: none; /* Hidden by default */
-            position: fixed;
-            z-index: 101;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%); /* Center it */
-            background-color: #fefefe;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-            min-width: 400px;
+            display: none; position: fixed; z-index: 101; top: 50%; left: 50%;
+            transform: translate(-50%, -50%); background-color: #fefefe; padding: 20px;
+            border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); min-width: 400px;
         }
-
         #modal-close {
-            color: #aaa;
-            float: right;
-            font-size: 28px;
-            font-weight: bold;
-            line-height: 1;
-            padding: 0 5px;
-            cursor: pointer;
+            color: #aaa; float: right; font-size: 28px; font-weight: bold;
+            line-height: 1; padding: 0 5px; cursor: pointer;
         }
         #modal-close:hover { color: #000; }
-        
-        /* --- Matrix Display (Now inside modal) --- */
-        .matrix {
-            font-family: 'Courier New', Courier, monospace;
-            font-size: 1.1em;
-            line-height: 1.4;
-            text-align: right;
-        }
-        
+        .matrix { font-family: 'Courier New', Courier, monospace; font-size: 1.1em; line-height: 1.4; text-align: right; }
         #calculation-display {
-            display: flex;
-            align-items: center;
-            justify-content: space-around;
-            background-color: #ecf0f1;
-            padding: 15px;
-            border-radius: 5px;
-            margin-top: 10px;
+            display: flex; align-items: center; justify-content: space-around;
+            background-color: #ecf0f1; padding: 15px; border-radius: 5px; margin-top: 10px;
         }
-        
         .matrix-4x1 { display: grid; grid-template-rows: repeat(4, 1fr); gap: 5px; }
         .matrix-4x4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; padding: 0 10px; }
-
         .matrix-4x1 span, .matrix-4x4 span {
-            padding: 5px;
-            background: #fff;
-            border: 1px solid #bdc3c7;
-            border-radius: 3px;
-            min-width: 30px; /* Ensure consistent width */
+            padding: 5px; background: #fff; border: 1px solid #bdc3c7;
+            border-radius: 3px; min-width: 30px;
         }
-        
         .math-symbol { font-size: 1.5em; font-weight: bold; color: #34495e; }
-        
     </style>
 </head>
 <body>
@@ -152,7 +77,8 @@
         <h2>3. Scaling (Sx, Sy, Sz)</h2>
         <div class="control-group"><label for="sx">Scale X <span>1.0</span></label><input type="range" id="sx" min="0.1" max="3" value="1" step="0.1"></div>
         <div class="control-group"><label for="sy">Scale Y <span>1.0</span></label><input type="range" id="sy" min="0.1" max="3" value="1" step="0.1"></div>
-        <div class="control-group"><label for="sz">Scale X <span>1.0</span></label><input type="range" id="sz" min="0.1" max="3" value="1" step="0.1"></div>
+        <div class="control-group"><label for="sz">Scale Z <span>1.0</span></label><input type="range" id="sz" min="0.1" max="3" value="1" step="0.1"></div>
+        
         <h2>4. Shearing (Sh)</h2>
         <div class="control-group"><label for="sh_xy">Shear X by Y (sh_xy) <span>0.0</span></label><input type="range" id="sh_xy" min="-1" max="1" value="0" step="0.1"></div>
         <div class="control-group"><label for="sh_yx">Shear Y by X (sh_yx) <span>0.0</span></label><input type="range" id="sh_yx" min="-1" max="1" value="0" step="0.1"></div>
@@ -164,20 +90,15 @@
 
     <div id="scene-container"></div>
     
-    
     <div id="modal-overlay"></div>
-    
     <div id="modal-content">
         <span id="modal-close">&times;</span> 
-        
         <h2>Example Calculation (New = Final * Original)</h2>
-        
         <div id="calculation-display">
             <div id="result-vector" class="matrix matrix-4x1"></div>
             <span class="math-symbol">=</span>
             <div id="final-matrix" class="matrix matrix-4x4"></div>
             <span class="math-symbol">*</span>
-            
             <div id="original-vector" class="matrix matrix-4x1"></div>
         </div>
     </div>
@@ -218,14 +139,24 @@
 
             scene.add(new THREE.AmbientLight(0xffffff, 0.5));
             scene.add(new THREE.DirectionalLight(0xffffff, 0.5).position.set(1, 2, 1));
-            scene.add(new THREE.GridHelper(10, 10, 0x888888, 0x444444));
-            scene.add(new THREE.AxesHelper(3));
+            
+            gridHelper = new THREE.GridHelper(10, 10, 0x888888, 0x444444);
+            scene.add(gridHelper);
+            axesHelper = new THREE.AxesHelper(3);
+            scene.add(axesHelper);
 
+            // --- Create Cubes (with Edges) ---
             const geometry = new THREE.BoxGeometry(2, 2, 2); 
             const material = new THREE.MeshStandardMaterial({ color: 0xe74c3c });
             cube = new THREE.Mesh(geometry, material);
             cube.matrixAutoUpdate = false; 
+            
+            const edgeGeometry = new THREE.EdgesGeometry(geometry);
+            const edgeMaterial = new THREE.LineBasicMaterial({ color: 0x000000 }); // Black edges
+            const cubeEdges = new THREE.LineSegments(edgeGeometry, edgeMaterial);
+            cube.add(cubeEdges); 
             scene.add(cube);
+            
             const wireframeMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true, transparent: true, opacity: 0.3 });
             originalCube = new THREE.Mesh(geometry, wireframeMaterial);
             scene.add(originalCube);
@@ -318,23 +249,48 @@
             cube.matrix.identity(); // Reset
             cube.matrix.multiply(matTranslate);
             cube.matrix.multiply(matRotate);
-            cube.matrix.multiply(matShear);
+            
+            // (FIXED) This was the matSheAR typo
+            cube.matrix.multiply(matShear); 
             cube.matrix.multiply(matScale);
 
-            // 4. Update the 4x4 Matrix Display (inside the hidden modal)
+            // 4. Update the 4x4 Matrix Display (Column-Major)
             const elements = cube.matrix.elements;
-            for (let i = 0; i < 16; i++) {
-                matrixSpans[i].innerText = elements[i].toFixed(2);
-            }
+            
+            // Row 1
+            matrixSpans[0].innerText = elements[0].toFixed(2);
+            matrixSpans[1].innerText = elements[4].toFixed(2);
+            matrixSpans[2].innerText = elements[8].toFixed(2);
+            matrixSpans[3].innerText = elements[12].toFixed(2); // tx
+            
+            // Row 2
+            matrixSpans[4].innerText = elements[1].toFixed(2);
+            matrixSpans[5].innerText = elements[5].toFixed(2);
+            matrixSpans[6].innerText = elements[9].toFixed(2);
+            matrixSpans[7].innerText = elements[13].toFixed(2); // ty
+            
+            // Row 3
+            matrixSpans[8].innerText = elements[2].toFixed(2);
+            matrixSpans[9].innerText = elements[6].toFixed(2);
+            matrixSpans[10].innerText = elements[10].toFixed(2);
+            matrixSpans[11].innerText = elements[14].toFixed(2); // tz
+            
+            // Row 4
+            matrixSpans[12].innerText = elements[3].toFixed(2);
+            matrixSpans[13].innerText = elements[7].toFixed(2);
+            matrixSpans[14].innerText = elements[11].toFixed(2);
+            matrixSpans[15].innerText = elements[15].toFixed(2); // 1
             
             // 5. Perform the example calculation
             const v_orig = new THREE.Vector4(1, 1, 1, 1);
             const v_result = v_orig.clone().applyMatrix4(cube.matrix);
             
-            // 6. Update the result vector display (inside the hidden modal)
+            // 6. Update the result vector display
             resultSpans[0].innerText = v_result.x.toFixed(2);
             resultSpans[1].innerText = v_result.y.toFixed(2);
             resultSpans[2].innerText = v_result.z.toFixed(2);
+            
+            // (FIXED) This is where the stray "S" was. It's gone now.
             resultSpans[3].innerText = v_result.w.toFixed(2);
         }
         
