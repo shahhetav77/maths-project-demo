@@ -9,40 +9,84 @@
     <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 
     <style>
+        /* --- MODIFIED: Added CSS Variables for Theming --- */
+        :root {
+            --bg-page: #f0f2f5;
+            --bg-panel: #fff;
+            --text-primary: #333;
+            --text-secondary: #34495e;
+            --text-header: #2c3e50;
+            --border-color: #eee;
+            --accent-color: #e74c3c;
+            --accent-color-hover: #c0392b;
+            --button-secondary-bg: #7f8c8d;
+            --button-secondary-hover: #95a5a6;
+            --button-primary-bg: #3498db;
+            --button-primary-hover: #2980b9;
+            --modal-bg: #fefefe;
+            --modal-calc-bg: #ecf0f1;
+            --modal-calc-border: #bdc3c7;
+            --modal-calc-span-bg: #fff;
+            --modal-close: #aaa;
+            --modal-close-hover: #000;
+        }
+
+        body[data-theme="dark"] {
+            --bg-page: #2c3e50;
+            --bg-panel: #34495e;
+            --text-primary: #ecf0f1;
+            --text-secondary: #bdc3c7;
+            --text-header: #fff;
+            --border-color: #4a637b;
+            --accent-color: #e74c3c;
+            --accent-color-hover: #c0392b;
+            --button-secondary-bg: #95a5a6;
+            --button-secondary-hover: #7f8c8d;
+            --button-primary-bg: #3498db;
+            --button-primary-hover: #2980b9;
+            --modal-bg: #34495e;
+            --modal-calc-bg: #2c3e50;
+            --modal-calc-border: #567;
+            --modal-calc-span-bg: #4a637b;
+            --modal-close: #bdc3c7;
+            --modal-close-hover: #fff;
+        }
+        /* --- End of Theming Variables --- */
+
         /* --- Page Layout --- */
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             line-height: 1.5;
-            background-color: #f0f2f5;
-            color: #333;
+            background-color: var(--bg-page); /* MODIFIED */
+            color: var(--text-primary); /* MODIFIED */
             margin: 0;
-            /* Mobile-first (stacked) layout */
+            transition: background-color 0.2s, color 0.2s; /* MODIFIED */
         }
 
         /* --- Controls Panel (Mobile First) --- */
         #controls {
             width: 100%;
             padding: 20px;
-            background-color: #fff;
+            background-color: var(--bg-panel); /* MODIFIED */
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             overflow-y: auto;
             box-sizing: border-box;
-            max-height: 50vh; /* 50% height for mobile */
+            max-height: 50vh;
+            transition: background-color 0.2s; /* MODIFIED */
         }
         
-        h1 { font-size: 1.5em; text-align: center; color: #2c3e50; border-bottom: 2px solid #e74c3c; padding-bottom: 10px; margin-top: 0; }
-        h2 { font-size: 1.1em; color: #34495e; margin-top: 20px; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        h1 { font-size: 1.5em; text-align: center; color: var(--text-header); border-bottom: 2px solid var(--accent-color); padding-bottom: 10px; margin-top: 0; }
+        h2 { font-size: 1.1em; color: var(--text-secondary); margin-top: 20px; margin-bottom: 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 5px; }
         .control-group { margin-bottom: 15px; }
         .control-group label { display: flex; justify-content: space-between; font-size: 0.9em; font-weight: bold; }
-        .control-group label span { font-weight: normal; color: #e74c3c; font-family: 'Courier New', Courier, monospace; }
+        .control-group label span { font-weight: normal; color: var(--accent-color); font-family: 'Courier New', Courier, monospace; }
         input[type="range"] { width: 100%; }
         
         /* --- 3D Scene (Mobile First) --- */
         #scene-container {
             width: 100%;
-            height: 50vh; /* 50% height for mobile */
-            /* --- MODIFIED --- */
-            background-color: #F5F5DC; /* Beige fallback */
+            height: 50vh;
+            background-color: #F5F5DC; /* This will be controlled by JS */
         }
         canvas { display: block; }
         
@@ -50,11 +94,20 @@
         button {
             width: 100%; padding: 10px; border: none; border-radius: 5px;
             font-size: 1em; font-weight: bold; cursor: pointer; margin-top: 20px;
+            transition: background-color 0.2s; /* MODIFIED */
         }
-        button#view-logic-btn { background-color: #3498db; color: white; }
-        button#view-logic-btn:hover { background-color: #2980b9; }
-        button#reset-btn { background-color: #e74c3c; color: white; }
-        button#reset-btn:hover { background-color: #c0392b; }
+        button#view-logic-btn { background-color: var(--button-primary-bg); color: white; }
+        button#view-logic-btn:hover { background-color: var(--button-primary-hover); }
+        button#reset-btn { background-color: var(--accent-color); color: white; }
+        button#reset-btn:hover { background-color: var(--accent-color-hover); }
+        
+        /* MODIFIED: Added new button style */
+        button#toggle-theme-btn {
+            background-color: var(--button-secondary-bg);
+            color: white;
+            margin-top: 10px; /* Less margin */
+        }
+        button#toggle-theme-btn:hover { background-color: var(--button-secondary-hover); }
         
         /* --- Modal Styles --- */
         #modal-overlay {
@@ -63,26 +116,32 @@
         }
         #modal-content {
             display: none; position: fixed; z-index: 101; top: 50%; left: 50%;
-            transform: translate(-50%, -50%); background-color: #fefefe; padding: 20px;
+            transform: translate(-50%, -50%); 
+            background-color: var(--modal-bg); /* MODIFIED */
+            padding: 20px;
             border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); min-width: 400px;
         }
         #modal-close {
-            color: #aaa; float: right; font-size: 28px; font-weight: bold;
+            color: var(--modal-close); /* MODIFIED */
+            float: right; font-size: 28px; font-weight: bold;
             line-height: 1; padding: 0 5px; cursor: pointer;
         }
-        #modal-close:hover { color: #000; }
+        #modal-close:hover { color: var(--modal-close-hover); } /* MODIFIED */
         .matrix { font-family: 'Courier New', Courier, monospace; font-size: 1.1em; line-height: 1.4; text-align: right; }
         #calculation-display {
             display: flex; align-items: center; justify-content: space-around;
-            background-color: #ecf0f1; padding: 15px; border-radius: 5px; margin-top: 10px;
+            background-color: var(--modal-calc-bg); /* MODIFIED */
+            padding: 15px; border-radius: 5px; margin-top: 10px;
         }
         .matrix-4x1 { display: grid; grid-template-rows: repeat(4, 1fr); gap: 5px; }
         .matrix-4x4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; padding: 0 10px; }
         .matrix-4x1 span, .matrix-4x4 span {
-            padding: 5px; background: #fff; border: 1px solid #bdc3c7;
+            padding: 5px; 
+            background: var(--modal-calc-span-bg); /* MODIFIED */
+            border: 1px solid var(--modal-calc-border); /* MODIFIED */
             border-radius: 3px; min-width: 30px;
         }
-        .math-symbol { font-size: 1.5em; font-weight: bold; color: #34495e; }
+        .math-symbol { font-size: 1.5em; font-weight: bold; color: var(--text-secondary); }
         
         /* --- Desktop Layout --- */
         @media (min-width: 769px) {
@@ -119,12 +178,10 @@
         <div class="control-group"><label for="sx">Scale X <span>1.0</span></label><input type="range" id="sx" min="0.1" max="3" value="1" step="0.1"></div>
         <div class="control-group"><label for="sy">Scale Y <span>1.0</span></label><input type="range" id="sy" min="0.1" max="3" value="1" step="0.1"></div>
         <div class="control-group"><label for="sz">Scale Z <span>1.0</span></label><input type="range" id="sz" min="0.1" max="3" value="1" step="0.1"></div>
-        <h2>4. Shearing (Sh)</h2>
-        <div class="control-group"><label for="sh_xy">Shear X by Y (sh_xy) <span>0.0</span></label><input type="range" id="sh_xy" min="-1" max="1" value="0" step="0.1"></div>
-        <div class="control-group"><label for="sh_yx">Shear Y by X (sh_yx) <span>0.0</span></label><input type="range" id="sh_yx" min="-1" max="1" value="0" step="0.1"></div>
         
         <button id="view-logic-btn">View Matrix Logic</button>
         <button id="reset-btn">Reset All</button>
+        <button id="toggle-theme-btn">Switch to Dark Mode</button>
 
     </div>
 
@@ -146,7 +203,7 @@
 
     <script>
         // --- 1. GLOBAL VARIABLES ---
-        let scene, camera, renderer, cube, originalCube, gridHelper, axesHelper;
+        let scene, camera, renderer, cube, originalCube, gridHelper;
         let controls; 
         
         const sliders = {};
@@ -157,13 +214,29 @@
         
         let modalOverlay, modalContent, closeModalBtn, viewLogicBtn;
         
+        // --- ADDED: Theme color constants ---
+        const themeColors = {
+            light: {
+                sceneBg: 0xF5F5DC,
+                wireframe: 0x333333,
+                grid1: 0x888888,
+                grid2: 0x444444
+            },
+            dark: {
+                sceneBg: 0x222222,
+                wireframe: 0xbbbbbb,
+                grid1: 0x666666,
+                grid2: 0x444444
+            }
+        };
+
         // --- 2. INITIALIZATION ---
         function init() {
             const container = document.getElementById('scene-container');
             scene = new THREE.Scene();
             
-            // --- MODIFIED ---
-            scene.background = new THREE.Color(0xF5F5DC); // Beige
+            // Set initial background color
+            scene.background = new THREE.Color(themeColors.light.sceneBg); 
             
             camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
             camera.position.set(3, 4, 7);
@@ -182,10 +255,19 @@
             scene.add(new THREE.AmbientLight(0xffffff, 0.5));
             scene.add(new THREE.DirectionalLight(0xffffff, 0.5).position.set(1, 2, 1));
             
-            gridHelper = new THREE.GridHelper(10, 10, 0x888888, 0x444444);
+            // Create initial grid helper
+            gridHelper = new THREE.GridHelper(10, 10, themeColors.light.grid1, themeColors.light.grid2);
             scene.add(gridHelper);
-            axesHelper = new THREE.AxesHelper(3);
-            scene.add(axesHelper);
+            
+            const axisLength = 5;
+            const headLength = 0.5;
+            const headWidth = 0.2;
+            const xAxis = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 0, 0), axisLength, 0xff0000, headLength, headWidth);
+            const yAxis = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 0), axisLength, 0x00ff00, headLength, headWidth);
+            const zAxis = new THREE.ArrowHelper(new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 0, 0), axisLength, 0x0000ff, headLength, headWidth);
+            scene.add(xAxis);
+            scene.add(yAxis);
+            scene.add(zAxis);
 
             // --- Create Cubes (with Edges) ---
             const geometry = new THREE.BoxGeometry(2, 2, 2); 
@@ -194,18 +276,23 @@
             cube.matrixAutoUpdate = false; 
             
             const edgeGeometry = new THREE.EdgesGeometry(geometry);
-            const edgeMaterial = new THREE.LineBasicMaterial({ color: 0x000000 }); // Black edges
+            const edgeMaterial = new THREE.LineBasicMaterial({ color: 0x000000 }); 
             const cubeEdges = new THREE.LineSegments(edgeGeometry, edgeMaterial);
             cube.add(cubeEdges); 
             scene.add(cube);
             
-            // --- MODIFIED (Wireframe color changed to dark gray) ---
-            const wireframeMaterial = new THREE.MeshBasicMaterial({ color: 0x333333, wireframe: true, transparent: true, opacity: 0.3 });
+            // Create initial wireframe cube
+            const wireframeMaterial = new THREE.MeshBasicMaterial({ 
+                color: themeColors.light.wireframe, // Use theme color
+                wireframe: true, 
+                transparent: true, 
+                opacity: 0.3 
+            });
             originalCube = new THREE.Mesh(geometry, wireframeMaterial);
             scene.add(originalCube);
 
             // --- Link UI Elements ---
-            const controlIds = [ 'tx', 'ty', 'tz', 'rx', 'ry', 'rz', 'sx', 'sy', 'sz', 'sh_xy', 'sh_yx' ];
+            const controlIds = [ 'tx', 'ty', 'tz', 'rx', 'ry', 'rz', 'sx', 'sy', 'sz' ];
             
             controlIds.forEach(id => {
                 sliders[id] = document.getElementById(id);
@@ -224,14 +311,12 @@
             const origVecContainer = document.getElementById('original-vector');
             const originalVertexValues = [1, 1, 1, 1]; 
 
-            // Create 4x4 matrix spans
             for (let i = 0; i < 16; i++) {
                 const span = document.createElement('span');
                 finalMatrixContainer.appendChild(span);
                 matrixSpans.push(span);
             }
             
-            // Create 4x1 result and original spans
             for (let i = 0; i < 4; i++) {
                 const resSpan = document.createElement('span');
                 resultVecContainer.appendChild(resSpan);
@@ -243,16 +328,18 @@
                 originalSpans.push(origSpan);
             }
             
-            // --- Modal Event Listeners ---
+            // --- Modal/Button Event Listeners ---
             viewLogicBtn.addEventListener('click', openModal);
             closeModalBtn.addEventListener('click', closeModal);
             modalOverlay.addEventListener('click', closeModal); 
-            
             document.getElementById('reset-btn').addEventListener('click', resetValues);
+            // --- ADDED: Theme toggle listener ---
+            document.getElementById('toggle-theme-btn').addEventListener('click', toggleTheme);
+            
             window.addEventListener('resize', onWindowResize);
             
-            onWindowResize(); // Call once on load to set correct size
-            updateSimulation(); // Initial update
+            onWindowResize();
+            updateSimulation(); 
         }
 
         // --- 3. Combined Update Function ---
@@ -283,44 +370,31 @@
             const sy = parseFloat(sliders.sy.value);
             const sz = parseFloat(sliders.sz.value);
             const matScale = new THREE.Matrix4().makeScale(sx, sy, sz);
-
-            const sh_xy = parseFloat(sliders.sh_xy.value);
-            const sh_yx = parseFloat(sliders.sh_yx.value);
-            const matShear = new THREE.Matrix4().identity();
-            matShear.set( 1, sh_yx, 0, 0, sh_xy, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 );
-
+            
             // 3. Combine the matrices and apply to the cube
             cube.matrix.identity(); // Reset
             cube.matrix.multiply(matTranslate);
             cube.matrix.multiply(matRotate);
-            
-            // (FIXED) This is the corrected line
-            cube.matrix.multiply(matShear); 
-            
             cube.matrix.multiply(matScale);
 
             // 4. Update the 4x4 Matrix Display (Column-Major)
             const elements = cube.matrix.elements;
-            
             matrixSpans[0].innerText = elements[0].toFixed(2);
             matrixSpans[1].innerText = elements[4].toFixed(2);
             matrixSpans[2].innerText = elements[8].toFixed(2);
-            matrixSpans[3].innerText = elements[12].toFixed(2); // tx
-            
+            matrixSpans[3].innerText = elements[12].toFixed(2); 
             matrixSpans[4].innerText = elements[1].toFixed(2);
             matrixSpans[5].innerText = elements[5].toFixed(2);
             matrixSpans[6].innerText = elements[9].toFixed(2);
-            matrixSpans[7].innerText = elements[13].toFixed(2); // ty
-            
+            matrixSpans[7].innerText = elements[13].toFixed(2);
             matrixSpans[8].innerText = elements[2].toFixed(2);
             matrixSpans[9].innerText = elements[6].toFixed(2);
             matrixSpans[10].innerText = elements[10].toFixed(2);
-            matrixSpans[11].innerText = elements[14].toFixed(2); // tz
-            
+            matrixSpans[11].innerText = elements[14].toFixed(2);
             matrixSpans[12].innerText = elements[3].toFixed(2);
             matrixSpans[13].innerText = elements[7].toFixed(2);
             matrixSpans[14].innerText = elements[11].toFixed(2);
-            matrixSpans[15].innerText = elements[15].toFixed(2); // 1
+            matrixSpans[15].innerText = elements[15].toFixed(2);
             
             // 5. Perform the example calculation
             const v_orig = new THREE.Vector4(1, 1, 1, 1);
@@ -338,7 +412,6 @@
             sliders.tx.value = 0; sliders.ty.value = 0; sliders.tz.value = 0;
             sliders.rx.value = 0; sliders.ry.value = 0; sliders.rz.value = 0;
             sliders.sx.value = 1; sliders.sy.value = 1; sliders.sz.value = 1;
-            sliders.sh_xy.value = 0; sliders.sh_yx.value = 0;
             
             updateSimulation();
         }
@@ -354,6 +427,27 @@
             modalContent.style.display = 'none';
         }
         
+        // --- ADDED: 5.5 THEME TOGGLE FUNCTION ---
+        function toggleTheme() {
+            const currentTheme = document.body.dataset.theme;
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            document.body.dataset.theme = newTheme;
+
+            const colors = themeColors[newTheme];
+            
+            // Update Three.js scene
+            scene.background.set(colors.sceneBg);
+            originalCube.material.color.set(colors.wireframe);
+
+            // Re-create grid helper
+            scene.remove(gridHelper);
+            gridHelper = new THREE.GridHelper(10, 10, colors.grid1, colors.grid2);
+            scene.add(gridHelper);
+            
+            // Update button text
+            document.getElementById('toggle-theme-btn').innerText = newTheme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode';
+        }
+
         // --- 6. RENDER LOOP ---
         function animate() {
             requestAnimationFrame(animate);
@@ -367,14 +461,12 @@
             
             let newWidth, newHeight;
             
-            // Check if we're in the desktop layout
             if (window.innerWidth >= 769) {
-                newWidth = window.innerWidth - 350; // Desktop width
+                newWidth = window.innerWidth - 350; 
                 newHeight = window.innerHeight;
             } else {
-                // Mobile layout
                 newWidth = window.innerWidth;
-                newHeight = window.innerHeight * 0.5; // 50vh
+                newHeight = window.innerHeight * 0.5; 
             }
             
             container.style.width = `${newWidth}px`;
@@ -389,6 +481,5 @@
         init();
         animate();
 
-    </script>
-</body>
+    </script></body>
 </html>
